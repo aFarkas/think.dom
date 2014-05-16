@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>simple panels</title>
+    <style>
+        .t-panel-group {
+            margin: auto;
+            width: 90%;
+            max-width: 480px;
+        }
+        .t-panel-group > ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            overflow: hidden;
+        }
+
+        .t-panel-group > ul > li {
+            float: left;
+        }
+
+        .t-panel {
+            display: none;
+        }
+
+        .t-panel[data-selected] {
+            display: block;
+        }
+    </style>
+    <script>
+        if(!window.MutationObserver){
+            document.write('<script src="../../../dist/think-polyfills.js"><\/script>');
+        }
+    </script>
+    <script src="../../../dist/think.js"></script>
+    <script>
+
+        think.dom('t-panel', {
+            attrs: {
+                selected: {
+                    type: 'boolean',
+                    onset: function(){
+                        think.event.fire(this, 'panelchange');
+                    }
+                },
+                buttons: {
+                    type: 'nodes',
+                    parentOf: '.t-panel-btn',
+
+                    idAsValueOf: 'aria-controls',
+
+                    indexOf: '.t-panel-btn.btn-primary',
+                    indexParent: '.t-panel-group'
+                }
+            }
+        });
+
+        think.dom('t-panel-btn', {
+            attrs: {
+                'aria-controls': {
+                    type: 'node',
+                    name: 'panel',
+
+                    childOf: '.t-panel',
+
+                    indexOf: '.t-panel',
+                    indexSelf: '.btn-primary',
+                    indexParent: '.t-panel-group'
+                }
+            },
+            on: {
+                click: function(){
+                    var panel = this.xpanel;
+                    if(panel){
+                        if(!think.event.fire(panel, 'beforepanelchange', {cancelable: true}).defaultPrevented){
+                            panel.xselected = !panel.xselected;
+                        }
+                    }
+                }
+            }
+        });
+
+        think.dom('t-panel-group', {
+            life: {
+                created: function(){
+                    var curPanel = this.xselectedItem;
+                    if(!curPanel){
+                        this.xselectedIndex = 0;
+                    }
+                }
+            },
+            attrs: {
+                panels: {
+                    type: 'nodes',
+                    parentOf: '.t-panel'
+                }
+            },
+            props: {
+                selectedItem: {
+                    get: function(){
+                        return this.querySelector('[data-selected].t-panel');
+                    },
+                    set: function(panel){
+                        panel.xselected = true;
+                    }
+                },
+                selectedIndex: {
+                    get: function(){
+                        return this.xpanels.indexOf(this.xselectedItem);
+                    },
+                    set: function(index){
+                        var panel = this.xpanels[index];
+                        if(panel){
+                            panel.xselected = true;
+                        }
+                    }
+                },
+                length: {
+                    get: function(){
+                        return this.xpanels.length;
+                    }
+                }
+            },
+            proto: {
+                selectNext: function(){
+                    var next = this.xselectedIndex + 1;
+                    if(next >= this.xlength){
+                        next = 0;
+                    }
+                    this.xselectedIndex = next;
+                },
+                selectPrev: function(){
+                    var prev = this.xselectedIndex - 1;
+                    if(prev < 0){
+                        prev = this.xlength - 1;
+                    }
+                    this.xselectedIndex = prev;
+                }
+            },
+            on: {
+                'beforepanelchange :delegate(.t-panel)': function(e, panel){
+                    if(panel.xselected){
+                        e.preventDefault();
+                    }
+                },
+                'panelchange :delegate(.t-panel)': function(e, curPanel){
+                    if(curPanel.xselected){
+                        this.xpanels.forEach(function(panel){
+                            if(curPanel != panel && panel.xselected){
+                                panel.xselected = false;
+                            }
+                        });
+                    }
+                }
+            }
+        });
+
+        think.dom('panel-group-nav', {
+            life: {
+                created: function(){
+
+                    this.innerHTML = '<button type="button" class="panel-prev">&lt;</button>' +
+                            '<span class="panel-index"></span>' +
+                            '<button type="button" class="panel-next">&gt;</button>';
+
+                    think.event.on(this.xpanelGroup, 'panelchange', this.xupdateIndex.bind(this));
+                    this.xupdateIndex();
+                }
+            },
+            attrs: {
+                'aria-controls': {
+                    type: 'node',
+                    childOf: '.t-panel-group',
+                    name: 'panelGroup'
+                }
+            },
+            proto: {
+                updateIndex: function(){
+                    this.querySelector('.panel-index').innerHTML = (this.xpanelGroup.xselectedIndex + 1) +'/'+ this.xpanelGroup.xlength;
+                }
+            },
+            on: {
+                'click :delegate(button.panel-next)': function(){
+                    this.xpanelGroup.xselectNext();
+                },
+                'click :delegate(button.panel-prev)': function(){
+                    this.xpanelGroup.xselectPrev();
+                }
+            }
+        });
+
+    </script>
+</head>
+<body>
+<p>We have panels and explicitly associated panel button</p>
+<p>+ associated by child buttons</p>
+<p>+ associated by index buttons.btn-primary</p>
+<p>+ added events and implemented group-control</p>
+
+
+<div class="t-panel-group">
+    <div class="panel-group-nav"></div>
+    <ul>
+        <li><button type="button" class="t-panel-btn btn-primary">panel toggle</button></li>
+        <li><button type="button" class="t-panel-btn btn-primary">panel toggle</button></li>
+        <li><button type="button" class="t-panel-btn btn-primary">panel toggle</button></li>
+    </ul>
+
+    <div class="t-panel">
+        <p>1. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+    </div>
+    <div class="t-panel">
+        <p>2. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+    </div>
+    <div class="t-panel">
+        <p>3. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+    </div>
+
+</div>
+</body>
+</html>
+

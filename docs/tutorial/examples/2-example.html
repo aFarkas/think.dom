@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>simple panels</title>
+    <style>
+        .t-panel {
+            display: none;
+        }
+
+        .t-panel[data-selected] {
+            display: block;
+        }
+    </style>
+    <script>
+        if(!window.MutationObserver){
+            document.write('<script src="../../../dist/think-polyfills.js"><\/script>');
+        }
+    </script>
+    <script src="../../../dist/think.js"></script>
+    <script>
+
+        think.dom('t-panel', {
+            attrs: {
+                selected: {
+                    type: 'boolean'
+                }
+            }
+        });
+
+        think.dom('t-panel-btn', {
+            attrs: {
+                'aria-controls': {
+                    type: 'node',
+                    name: 'panel',
+                    childOf: '.t-panel'
+                }
+            },
+            on: {
+                click: function(){
+                    var panel = this.xpanel;
+                    if(panel){
+                        panel.xselected = !panel.xselected;
+                    }
+                }
+            }
+        });
+    </script>
+</head>
+<body>
+    <p>We have panels and explicitly associated panel button</p>
+    <p>+ associated child buttons</p>
+
+    <button type="button" class="t-panel-btn" aria-controls="panel-1">panel toggle</button>
+    <div class="t-panel" id="panel-1">
+        <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+        <button type="button" class="t-panel-btn">close panel</button>
+    </div>
+
+    <button type="button" class="t-panel-btn" aria-controls="panel-2">panel toggle</button>
+    <div class="t-panel" id="panel-2">
+        <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+        <button type="button" class="t-panel-btn">close panel</button>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "think",
+  "version": "0.1.0",
+  "main": [
+  	"dist/think.min.js"
+  ],
+  "ignore": [
+    "**/.*",
+    "test",
+    "build",
+    "src"
+  ]
+}

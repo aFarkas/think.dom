@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>label control</title>
+    <style>
+        .checkbox {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            border: 1px solid #ccc;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .checkbox[aria-checked="true"]:before {
+            content: "x";
+            vertical-align: middle;
+        }
+
+        .label {
+            cursor: pointer;
+            display: inline-block;
+            padding: 2px;
+        }
+
+        .form {
+            width: 300px;
+            padding: 10px;
+            margin: 10px auto;
+            border: 1px solid #aaa;
+        }
+
+        .submit {
+            display: inline-block;
+            padding: 2px;
+            border: 1px solid #ccc;
+            margin: 2px;
+        }
+    </style>
+    <script>
+        if(!window.MutationObserver){
+            document.write('<script src="../dist/think-polyfills.js"><\/script>');
+        }
+    </script>
+    <script src="../dist/think.js"></script>
+
+    <script>
+        think.dom('checkbox', {
+            life: {
+                created: function(){
+                    this.setAttribute('role', 'checkbox');
+                    this.tabIndex = 0;
+                }
+            },
+            attrs: {
+                'aria-checked': {
+                    type: 'boolean'
+                },
+                labels: {
+                    type: 'nodes',
+                    childOf: '.label',
+                    idAsValueOf: 'aria-controls'
+                },
+                //not needed for demo just for fun
+                form: {
+                    type: 'node',
+                    childOf: '.form'
+                }
+            },
+            on: {
+                click: function(){
+                    this.xchecked = !this.xchecked;
+                    think.event.fire(this, 'change');
+                }
+            },
+            props: {
+                text: {
+                    get: function(){
+                        var text = this.xlabels.map(this.xMAPLABELTEXT).join(', ');
+                        return text +' checkedness is now: '+ this.xchecked;
+                    }
+                },
+                MAPLABELTEXT: {
+                    value: function mapLabelText(label){
+                        return label.textContent.trim();
+                    },
+                    enumerable: false
+                }
+            }
+        });
+
+        think.dom('label', {
+            attrs: {
+                'aria-controls': {
+                    type: 'node',
+                    parentOf: '.checkbox',
+                    name: 'control'
+                }
+            },
+            on: {
+                click: function(e){
+                    if(e.target != this.xcontrol && this.xcontrol){
+                        this.xcontrol.click();
+                    }
+                }
+            }
+        });
+
+        think.dom('form', {
+            attrs: {
+                'elements': {
+                    type: 'nodes',
+                    parentOf: '.checkbox',
+                    idAsValueOf: 'data-form'
+                }
+            },
+            on: {
+                submit: function(e){
+                    this.xoutputData();
+                }
+            },
+            proto: {
+                outputData: function(){
+                    var output = this.xelements.map(function(checkbox){
+                        return checkbox.xtext;
+                    });
+
+                    alert(output.join('\n'));
+                }
+            }
+        });
+
+        think.dom('submit', {
+            attrs: {
+                'aria-controls': {
+                    type: 'node',
+                    childOf: '.form',
+                    name: 'form'
+                }
+            },
+            on: {
+                click: function(){
+                    if(this.xform){
+                        this.xform.xoutputData();
+                    }
+                }
+            }
+        });
+
+        /*
+        demo out put for console
+         */
+
+        think.event.on(document.documentElement, 'change', function(e, checkbox){
+            if(window.console){
+                console.log(checkbox.xtext);
+            }
+        }, '.checkbox');
+    </script>
+</head>
+<body>
+<div class="form" id="myform">
+    <h2>form</h2>
+    <div>
+        <span class="label">
+            <span class="checkbox"></span>
+            implicit label for 1
+        </span>
+    </div>
+
+    <div>
+        <span class="label">
+            <span class="checkbox" id="check-id"></span>
+            implicit label for 2
+        </span>
+    </div>
+
+    <span class="submit">submit</span>
+</div>
+<hr />
+<div>
+    <span class="label">
+        <span class="checkbox" data-form="myform"></span>
+        implicit label for outside form
+    </span>
+</div>
+<div>
+    <span class="label" aria-controls="check-id">explicit label for 2</span>
+</div>
+</body>
+</html>
