@@ -100,7 +100,7 @@
             return {
                 get: function(){
                     var value = this.getAttribute(name);
-                    return Array.indexOf(value, desc.enums) != -1 ? value : desc['default'] || '';
+                    return desc.enums.indexOf(value) != -1 ? value : desc['default'] || '';
                 },
                 set: defSet(name, desc)
             };

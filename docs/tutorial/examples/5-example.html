@@ -27,6 +27,7 @@
             display: block;
         }
     </style>
+    <script src="http://code.jquery.com/jquery-1.11.0.js"></script>
     <script>
         if(!window.MutationObserver){
             document.write('<script src="../../../dist/think-polyfills.js"><\/script>');
@@ -37,12 +38,41 @@
 
         think.dom('t-panel', {
             attrs: {
+                fx: {
+                    type: 'enum',
+                    enums: ['slide', 'fade', 'no'],
+                    'default': 'slide'
+                },
                 selected: {
                     type: 'boolean',
-                    onset: function(){
-                        think.event.fire(this, 'panelchange');
-                    }
+                    onset: (function(){
+                        var fx = {
+                            no: function(elem, show){
+                                elem.style.display = show ? 'block' : 'none';
+                            },
+                            slide: function(elem, show){
+                                $(elem).finish();
+                                elem.style.display = show ? 'none' : 'block';
+                                $(elem)[show ? 'slideDown' : 'slideUp']();
+                            },
+                            fade: function(elem, show){
+                                $(elem).finish();
+                                elem.style.display = show ? 'none' : 'block';
+                                $(elem)[show ? 'slideDown' : 'slideUp']();
+                            }
+
+                        };
+                        return function(){
+                            fx[this.xfx](this, this.xselected);
+                            think.event.fire(this, 'panelchange');
+                        }
+                    })()
                 },
+                group: {
+                    type: 'node',
+                    childOf: '.t-panel-group'
+                },
+                //nice to have API?!?
                 buttons: {
                     type: 'nodes',
                     parentOf: '.t-panel-btn',
@@ -83,9 +113,16 @@
         think.dom('t-panel-group', {
             life: {
                 created: function(){
+                    var oldFx;
                     var curPanel = this.xselectedItem;
                     if(!curPanel){
-                        this.xselectedIndex = 0;
+                        curPanel = this.xpanels[0];
+                        if(curPanel){
+                            oldFx = curPanel.xfx;
+                            curPanel.xfx = 'no';
+                            this.xselectedItem = curPanel;
+                            curPanel.xfx = oldFx;
+                        }
                     }
                 }
             },
@@ -163,7 +200,8 @@
                             '<span class="panel-index"></span>' +
                             '<button type="button" class="panel-next">&gt;</button>';
 
-                    think.event.on(this.xpanelGroup, 'panelchange', this.xupdateIndex.bind(this));
+                    this.xupdateIndex = this.xupdateIndex.bind(this);
+                    think.event.on(this.xpanelGroup, 'panelchange', this.xupdateIndex);
                     this.xupdateIndex();
                 }
             },
@@ -201,15 +239,15 @@
 <div class="t-panel-group">
     <div class="panel-group-nav"></div>
     <ul>
-        <li><button type="button" class="t-panel-btn btn-primary">panel toggle</button></li>
-        <li><button type="button" class="t-panel-btn btn-primary">panel toggle</button></li>
-        <li><button type="button" class="t-panel-btn btn-primary">panel toggle</button></li>
+        <li><button type="button" class="t-panel-btn btn-primary">open 1</button></li>
+        <li><button type="button" class="t-panel-btn btn-primary">open 2</button></li>
+        <li><button type="button" class="t-panel-btn btn-primary">Open 3</button></li>
     </ul>
 
     <div class="t-panel">
         <p>1. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
     </div>
-    <div class="t-panel">
+    <div class="t-panel" data-selected>
         <p>2. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
     </div>
     <div class="t-panel">
