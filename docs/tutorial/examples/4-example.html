@@ -7,7 +7,7 @@
             display: none;
         }
 
-        .t-panel[data-selected] {
+        .t-panel[aria-expanded="true"] {
             display: block;
         }
     </style>
@@ -21,10 +21,18 @@
 
         think.dom('t-panel', {
             attrs: {
-                selected: {
+                'aria-expanded': {
                     type: 'boolean',
                     onset: function(){
-                        think.event.fire(this, 'panelchange');
+                        if(this.xblock){return;}
+
+                        if(think.event.fire(this, 'beforepanelchange', {cancelable: true}).defaultPrevented){
+                            this.xblock = true;
+                            this.xexpanded = !this.xexpanded;
+                            delete this.xblock;
+                        } else {
+                            think.event.fire(this, 'panelchange');
+                        }
                     }
                 }
             }
@@ -43,11 +51,8 @@
             },
             on: {
                 click: function(){
-                    var panel = this.xpanel;
-                    if(panel){
-                        if(!think.event.fire(panel, 'beforepanelchange', {cancelable: true}).defaultPrevented){
-                            panel.xselected = !panel.xselected;
-                        }
+                    if(this.xpanel){
+                        this.xpanel.xexpanded = !this.xpanel.xexpanded;
                     }
                 }
             }
@@ -56,7 +61,7 @@
         think.dom('t-panel-group', {
             life: {
                 created: function(){
-                    var curPanel = this.xselectedItem;
+                    var curPanel = this.xexpandedItem;
                     if(!curPanel){
                         this.xselectedIndex = 0;
                     }
@@ -71,38 +76,41 @@
             props: {
                 selectedItem: {
                     get: function(){
-                        return this.querySelector('[data-selected].t-panel');
+                        return this.querySelector('[aria-expanded="true"].t-panel');
                     },
                     set: function(panel){
-                        panel.xselected = true;
+                        panel.xexpanded = true;
                     }
                 },
                 selectedIndex: {
                     get: function(){
-                        return this.xpanels.indexOf(this.xselectedItem);
+                        return this.xpanels.indexOf(this.xexpandedItem);
                     },
                     set: function(index){
                         var panel = this.xpanels[index];
                         if(panel){
-                            panel.xselected = true;
+                            panel.xexpanded = true;
                         }
                     }
                 }
             },
             on: {
                 'beforepanelchange :delegate(.t-panel)': function(e, panel){
-                    if(panel.xselected){
+
+                    if(this.xblock || e.isDefaultPrevented){return;}
+                    e.stopImmediatePropagation();
+                    if(!panel.xexpanded){
                         e.preventDefault();
-                    }
-                },
-                'panelchange :delegate(.t-panel)': function(e, curPanel){
-                    if(curPanel.xselected){
-                        this.xpanels.forEach(function(panel){
-                            if(curPanel != panel && panel.xselected){
-                                panel.xselected = false;
+                    } else {
+                        this.xblock = true;
+                        this.xpanels.forEach(function(forPanel){
+                            if(panel != forPanel && forPanel.xexpanded){
+                                forPanel.xexpanded = false;
                             }
                         });
+                        delete this.xblock;
                     }
+                    e.stopImmediatePropagation();
                 }
             }
         });

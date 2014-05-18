@@ -23,7 +23,7 @@
             display: none;
         }
 
-        .t-panel[data-selected] {
+        .t-panel[aria-expanded="true"] {
             display: block;
         }
     </style>
@@ -37,13 +37,14 @@
     <script>
 
         think.dom('t-panel', {
+
             attrs: {
-                fx: {
+                animate: {
                     type: 'enum',
                     enums: ['slide', 'fade', 'no'],
                     'default': 'slide'
                 },
-                selected: {
+                'aria-expanded': {
                     type: 'boolean',
                     onset: (function(){
                         var fx = {
@@ -63,8 +64,23 @@
 
                         };
                         return function(){
-                            fx[this.xfx](this, this.xselected);
-                            think.event.fire(this, 'panelchange');
+                            //stop circular calling using xblock property
+                            if(this.xblock){return;}
+
+                            //if beforepanelchange event is prevented...
+                            if(think.event.fire(this, 'beforepanelchange', {cancelable: true}).defaultPrevented){
+                                //set xblock property and revert to previous state
+                                this.xblock = true;
+                                this.xexpanded = !this.xexpanded;
+                                delete this.xblock;
+                            } else {
+                                //otherwise do the animation
+                                fx[this.xanimate](this, this.xexpanded);
+                                //update all buttons
+                                this.xupdateButtonState();
+                                //fire a panelchange event
+                                think.event.fire(this, 'panelchange');
+                            }
                         }
                     })()
                 },
@@ -72,7 +88,6 @@
                     type: 'node',
                     childOf: '.t-panel-group'
                 },
-                //nice to have API?!?
                 buttons: {
                     type: 'nodes',
                     parentOf: '.t-panel-btn',
@@ -82,10 +97,24 @@
                     indexOf: '.t-panel-btn.btn-primary',
                     indexParent: '.t-panel-group'
                 }
+            },
+            proto: {
+                updateButtonState: function(){
+                    this.xbuttons.forEach(function(button){
+                        button.setAttribute('aria-expanded', ''+this.xexpanded);
+                    }, this);
+                }
             }
         });
 
         think.dom('t-panel-btn', {
+            life: {
+                created: function(){
+                    if(this.xpanel){
+                        this.setAttribute('aria-expanded', ''+this.xpanel.xexpanded);
+                    }
+                }
+            },
             attrs: {
                 'aria-controls': {
                     type: 'node',
@@ -100,11 +129,8 @@
             },
             on: {
                 click: function(){
-                    var panel = this.xpanel;
-                    if(panel){
-                        if(!think.event.fire(panel, 'beforepanelchange', {cancelable: true}).defaultPrevented){
-                            panel.xselected = !panel.xselected;
-                        }
+                    if(this.xpanel){
+                        this.xpanel.xexpanded = !this.xpanel.xexpanded;
                     }
                 }
             }
@@ -118,10 +144,12 @@
                     if(!curPanel){
                         curPanel = this.xpanels[0];
                         if(curPanel){
-                            oldFx = curPanel.xfx;
-                            curPanel.xfx = 'no';
+                            this.xblock = true;
+                            oldFx = curPanel.xanimate;
+                            curPanel.xanimate = 'no';
                             this.xselectedItem = curPanel;
-                            curPanel.xfx = oldFx;
+                            curPanel.xanimate = oldFx;
+                            delete this.xblock;
                         }
                     }
                 }
@@ -130,15 +158,21 @@
                 panels: {
                     type: 'nodes',
                     parentOf: '.t-panel'
+                },
+                navs: {
+                    type: 'nodes',
+                    parentOf: '.panel-group-nav',
+
+                    idAsValueOf: 'aria-controls'
                 }
             },
             props: {
                 selectedItem: {
                     get: function(){
-                        return this.querySelector('[data-selected].t-panel');
+                        return this.querySelector('[aria-expanded="true"].t-panel');
                     },
                     set: function(panel){
-                        panel.xselected = true;
+                        panel.xexpanded = true;
                     }
                 },
                 selectedIndex: {
@@ -148,7 +182,7 @@
                     set: function(index){
                         var panel = this.xpanels[index];
                         if(panel){
-                            panel.xselected = true;
+                            panel.xexpanded = true;
                         }
                     }
                 },
@@ -176,18 +210,20 @@
             },
             on: {
                 'beforepanelchange :delegate(.t-panel)': function(e, panel){
-                    if(panel.xselected){
+                    if(this.xblock || e.isDefaultPrevented){return;}
+                    e.stopImmediatePropagation();
+                    if(!panel.xexpanded){
                         e.preventDefault();
-                    }
-                },
-                'panelchange :delegate(.t-panel)': function(e, curPanel){
-                    if(curPanel.xselected){
-                        this.xpanels.forEach(function(panel){
-                            if(curPanel != panel && panel.xselected){
-                                panel.xselected = false;
+                    } else {
+                        this.xblock = true;
+                        this.xpanels.forEach(function(forPanel){
+                            if(panel != forPanel && forPanel.xexpanded){
+                                forPanel.xexpanded = false;
                             }
                         });
+                        delete this.xblock;
                     }
+                    e.stopImmediatePropagation();
                 }
             }
         });
@@ -214,7 +250,9 @@
             },
             proto: {
                 updateIndex: function(){
-                    this.querySelector('.panel-index').innerHTML = (this.xpanelGroup.xselectedIndex + 1) +'/'+ this.xpanelGroup.xlength;
+                    if(this.xpanelGroup){
+                        this.querySelector('.panel-index').innerHTML = (this.xpanelGroup.xselectedIndex + 1) +'/'+ this.xpanelGroup.xlength;
+                    }
                 }
             },
             on: {
@@ -236,7 +274,7 @@
 <p>+ added events and implemented group-control</p>
 
 
-<div class="t-panel-group">
+<div class="t-panel-group" id="panel-group">
     <div class="panel-group-nav"></div>
     <ul>
         <li><button type="button" class="t-panel-btn btn-primary">open 1</button></li>
@@ -247,14 +285,30 @@
     <div class="t-panel">
         <p>1. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
     </div>
-    <div class="t-panel" data-selected>
+    <div class="t-panel">
         <p>2. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
     </div>
     <div class="t-panel">
         <p>3. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
     </div>
-
 </div>
+<hr />
+<div>
+    <button type="button" class="t-panel-btn" aria-controls="panel-1">panel toggle</button>
+    <div class="t-panel" id="panel-1">
+        <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+        <button type="button" class="t-panel-btn">close panel</button>
+    </div>
+</div>
+<div>
+    <button type="button" class="t-panel-btn" aria-controls="panel-2">panel toggle</button>
+    <div class="t-panel" id="panel-2">
+        <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+        <button type="button" class="t-panel-btn">close panel</button>
+    </div>
+</div>
+
+<div class="panel-group-nav" aria-controls="panel-group"></div>
 </body>
 </html>
 

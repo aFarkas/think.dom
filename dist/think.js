@@ -123,9 +123,9 @@
                         useValue = typeof desc.parentOf != STRING ? value : desc.parentOf;
                         elem = this.querySelector(useValue);
                     }
-                    if(!elem && desc.indexOf && desc.indexParent){
+                    if(!elem && desc.indexOf){
                         useValue = typeof desc.indexOf != STRING ? value : desc.indexOf;
-                        parent = this.xclosest(desc.indexParent);
+                        parent = desc.indexParent ? this.xclosest(desc.indexParent) : this.xclosestContainer(useValue, this.parent);
                         if(parent){
                             index = slice.call(this.xquerySelectorAll((desc.indexSelf || '') + '.'+widget.name, parent)).indexOf(this);
                             elem = this.xquerySelectorAll(useValue, parent)[index];
@@ -158,13 +158,14 @@
                     var useValue, id, elem, index, parent;
                     var value = this.getAttribute(name) || desc['default'];
                     var list = cache.g(this, name, value);
+                    var filter = 'filter' in desc ? desc.filter : desc.parentOf || desc.childOf || '';
                     if(list){
                         return list;
                     }
                     list = [];
 
                     if(desc.sameValue){
-                        merge(list, this.xquerySelectorAll('['+name+'="'+ value +'"]', docElem));
+                        merge(list, this.xquerySelectorAll('['+name+'="'+ value +'"]'+filter, docElem));
                     }
                     if(desc.parentOf){
                         useValue = typeof desc.parentOf != STRING ? value : desc.parentOf;
@@ -178,12 +179,12 @@
                     }
                     if(desc.idAsValueOf && (id = this.id)){
                         useValue = typeof desc.idAsValueOf != STRING ? value : desc.idAsValueOf;
-                        merge(list, this.xquerySelectorAll('[' +useValue+ '="'+ id +'"]', docElem))
+                        merge(list, this.xquerySelectorAll('[' +useValue+ '="'+ id +'"]'+filter, docElem))
                     }
 
-                    if(desc.indexOf && desc.indexParent){
+                    if(desc.indexOf){
                         useValue = typeof desc.indexOf != STRING ? value : desc.indexOf;
-                        parent = this.xclosest(desc.indexParent);
+                        parent = desc.indexParent ? this.xclosest(desc.indexParent) : this.xclosestContainer(useValue, this.parent);
 
                         if(parent){
                             index = slice.call(this.xquerySelectorAll((desc.indexSelf || '') + '.'+widget.name, parent)).indexOf(this);
@@ -261,13 +262,18 @@
     });
 
     ['querySelector', 'querySelectorAll'].forEach(function(fn){
+        var toArray = fn == 'querySelectorAll';
         baseWidget['x'+fn] = function(sel, dom){
             if(!dom){
                 dom = this;
             }
             var ret = cache.g(dom, fn, sel);
-            if(ret){ret;}
-            return cache.a(dom, fn, sel, dom[fn](sel), 1);
+            if(ret !== undefined){ret;}
+            ret = dom[fn](sel);
+            if(toArray){
+                ret = slice.call(ret);
+            }
+            return cache.a(dom, fn, sel, ret, 1);
         };
 
     });
