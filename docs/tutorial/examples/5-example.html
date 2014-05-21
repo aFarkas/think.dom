@@ -42,10 +42,12 @@
                 animate: {
                     type: 'enum',
                     enums: ['slide', 'fade', 'no'],
-                    'default': 'slide'
+                    'default': window.jQuery ? 'slide' : 'no'
                 },
                 'aria-expanded': {
                     type: 'boolean',
+                    cancelable: true,
+                    fire: true,
                     onset: (function(){
                         var fx = {
                             no: function(elem, show){
@@ -64,23 +66,9 @@
 
                         };
                         return function(){
-                            //stop circular calling using xblock property
-                            if(this.xblock){return;}
-
-                            //if beforepanelchange event is prevented...
-                            if(think.event.fire(this, 'beforepanelchange', {cancelable: true}).defaultPrevented){
-                                //set xblock property and revert to previous state
-                                this.xblock = true;
-                                this.xexpanded = !this.xexpanded;
-                                delete this.xblock;
-                            } else {
-                                //otherwise do the animation
-                                fx[this.xanimate](this, this.xexpanded);
-                                //update all buttons
-                                this.xupdateButtonState();
-                                //fire a panelchange event
-                                think.event.fire(this, 'panelchange');
-                            }
+                            fx[this.xanimate](this, this.xexpanded);
+                            //update all buttons
+                            this.xupdateButtonState();
                         }
                     })()
                 },
@@ -144,12 +132,12 @@
                     if(!curPanel){
                         curPanel = this.xpanels[0];
                         if(curPanel){
-                            this.xblock = true;
+                            this.xhandledChange = true;
                             oldFx = curPanel.xanimate;
                             curPanel.xanimate = 'no';
                             this.xselectedItem = curPanel;
                             curPanel.xanimate = oldFx;
-                            delete this.xblock;
+                            delete this.xhandledChange;
                         }
                     }
                 }
@@ -209,19 +197,22 @@
                 }
             },
             on: {
-                'beforepanelchange :delegate(.t-panel)': function(e, panel){
-                    if(this.xblock || e.isDefaultPrevented){return;}
+                'beforeexpandedchange :delegate(.t-panel)': function(e, panel){
+
+                    if(this.xhandledChange || e.defaultPrevented || !e.target.matches('.t-panel')){
+                        return;
+                    }
                     e.stopImmediatePropagation();
-                    if(!panel.xexpanded){
+                    if(panel.xexpanded){
                         e.preventDefault();
                     } else {
-                        this.xblock = true;
+                        this.xhandledChange = true;
                         this.xpanels.forEach(function(forPanel){
                             if(panel != forPanel && forPanel.xexpanded){
                                 forPanel.xexpanded = false;
                             }
                         });
-                        delete this.xblock;
+                        delete this.xhandledChange;
                     }
                     e.stopImmediatePropagation();
                 }
@@ -237,7 +228,7 @@
                             '<button type="button" class="panel-next">&gt;</button>';
 
                     this.xupdateIndex = this.xupdateIndex.bind(this);
-                    think.event.on(this.xpanelGroup, 'panelchange', this.xupdateIndex);
+                    think.event.on(this.xpanelGroup, 'expandedchange', this.xupdateIndex);
                     this.xupdateIndex();
                 }
             },
@@ -295,7 +286,7 @@
 <hr />
 <div>
     <button type="button" class="t-panel-btn" aria-controls="panel-1">panel toggle</button>
-    <div class="t-panel" id="panel-1">
+    <div class="t-panel" id="panel-1" aria-expanded="true">
         <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
         <button type="button" class="t-panel-btn">close panel</button>
     </div>

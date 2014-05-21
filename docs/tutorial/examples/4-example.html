@@ -23,17 +23,7 @@
             attrs: {
                 'aria-expanded': {
                     type: 'boolean',
-                    onset: function(){
-                        if(this.xblock){return;}
-
-                        if(think.event.fire(this, 'beforepanelchange', {cancelable: true}).defaultPrevented){
-                            this.xblock = true;
-                            this.xexpanded = !this.xexpanded;
-                            delete this.xblock;
-                        } else {
-                            think.event.fire(this, 'panelchange');
-                        }
-                    }
+                    cancelable: true
                 }
             }
         });
@@ -95,20 +85,21 @@
                 }
             },
             on: {
-                'beforepanelchange :delegate(.t-panel)': function(e, panel){
-
-                    if(this.xblock || e.isDefaultPrevented){return;}
+                'beforeexpandedchange :delegate(.t-panel)': function(e, panel){
+                    if(this.xhandledChange || e.defaultPrevented || !e.target.matches('.t-panel')){
+                        return;
+                    }
                     e.stopImmediatePropagation();
-                    if(!panel.xexpanded){
+                    if(panel.xexpanded){
                         e.preventDefault();
                     } else {
-                        this.xblock = true;
+                        this.xhandledChange = true;
                         this.xpanels.forEach(function(forPanel){
                             if(panel != forPanel && forPanel.xexpanded){
                                 forPanel.xexpanded = false;
                             }
                         });
-                        delete this.xblock;
+                        delete this.xhandledChange;
                     }
                     e.stopImmediatePropagation();
                 }
@@ -124,7 +115,7 @@
 <p>+ added events and implemented group-control</p>
 
 <button type="button" class="t-panel-btn" aria-controls="panel-1">panel toggle</button>
-<div class="t-panel" id="panel-1">
+<div class="t-panel" id="panel-1" aria-expanded="true">
     <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
     <button type="button" class="t-panel-btn">close panel</button>
 </div>

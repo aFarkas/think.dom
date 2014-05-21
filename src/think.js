@@ -41,6 +41,7 @@
     })();
     var defSet = function(name, desc){
         return function(value){
+            if(fireBefore(this, desc)){return;}
             this.setAttribute(name, value);
             updateAttr(this, desc);
         };
@@ -81,11 +82,13 @@
                 ,
                 set: desc.isAria ?
                     function(value){
+                        if(fireBefore(this, desc)){return;}
                         value = !!value+'';
                         this.setAttribute(name, value);
                         updateAttr(this, desc);
                     } :
                     function(value){
+                        if(fireBefore(this, desc)){return;}
                         if(value){
                             this.setAttribute(name, '');
                         } else {
@@ -135,6 +138,7 @@
                     return cache.a(this, name, value, elem || null, 1);
                 },
                 set: function(value){
+                    if(fireBefore(this, desc)){return;}
                     if(value){
                         if(typeof value != 'string'){
                             value = value.id;
@@ -148,7 +152,7 @@
                     } else {
                         this.removeAttribute(name);
                     }
-                    updateAttr(this, desc);
+                    updateAttr(this, desc, widget);
                 }
             };
         },
@@ -158,7 +162,7 @@
                     var useValue, id, elem, index, parent;
                     var value = this.getAttribute(name) || desc['default'];
                     var list = cache.g(this, name, value);
-                    var filter = 'filter' in desc ? desc.filter : desc.parentOf || desc.childOf || '';
+                    var filter = 'filter' in desc ? desc.filter : desc.parentOf || desc.childOf || '.'+widget.name;
                     if(list){
                         return list;
                     }
@@ -215,6 +219,7 @@
                     return cache.a(this, name, value, json || desc['default'] || null);
                 },
                 set: function(value){
+                    if(fireBefore(this, desc)){return;}
                     if(typeof value == 'object'){
                         value = JSON.stringify(this.getAttribute(name));
                     }
@@ -239,9 +244,7 @@
     };
     var regDash = /-(.)/g;
     var regAria = /^aria\-/;
-    var baseWidget = {
-
-    };
+    var baseWidget = {};
 
     [{name: 'xclosest', fn: 'matches'}, {name: 'xclosestContainer', fn: 'querySelector'}].forEach(function(desc){
         baseWidget[desc.name] = function(sel, elem, stop){
@@ -318,6 +321,11 @@
         return value;
     }
 
+    function fireBefore(elem, desc){
+        return desc.cancelable && think.event.fire(elem, 'before'+desc.name+'change', {cancelable: true}).defaultPrevented;
+    }
+
+
     function mixin(a, b){
         var prop;
         for(prop in b){
@@ -349,6 +357,9 @@
     function updateAttr(dom, desc){
         if(desc.onset){
             baseWidget.xupdateattr.call(dom);
+        }
+        if(desc.fire){
+            think.event.fire(dom, desc.name+'change');
         }
     }
 
@@ -588,7 +599,8 @@
                 if(desc.onset){
                     widget.xattrs[attrName] = desc.onset;
                 }
-                widget.props[(desc.name || name.replace(/^aria\-/, '').replace(regDash, camelCase))] = (reflectTypes[desc.type] || reflectTypes[''])(attrName, desc, widget);
+                desc.name = (desc.name || name.replace(/^aria\-/, '').replace(regDash, camelCase));
+                widget.props[desc.name] = (reflectTypes[desc.type] || reflectTypes[''])(attrName, desc, widget);
             }
         }
     }
