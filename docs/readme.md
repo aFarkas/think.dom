@@ -279,7 +279,7 @@ think.dom('radio', {
 });
 ```
 
-Here is a [simple example](../examples/form-label-control.html) using the above configurations to define element associations between custom/pseudo form controls.
+Here is a [simple example](http://afarkas.github.io/think.dom/examples/form-label-control.html) ([source](../examples/form-label-control.html)) using the above configurations to define element associations between custom/pseudo form controls.
 
 Another powerfull way to associate elements is by index inside a given container. (The first button.toggle-panel is associated with the first .panel inside a container called .panel-group):
 
@@ -371,7 +371,7 @@ think.dom('.panel', {
 });
 ```
 
-Here is a [configuration example using the ``indexOf``/``indexParent``](tutorial/examples/5-example.html) configuration option and using the ``fire`` and ``canceable`` option to build first collapsible panels and extend those by grouping them into tabs/accordion control.
+Here is a [configuration example using the ``indexOf``/``indexParent``](http://afarkas.github.io/think.dom/docs/tutorial/examples/5-example.html) ([source](tutorial/examples/5-example.html)) configuration option and using the ``fire`` and ``canceable`` option to build first collapsible panels and extend those by grouping them into tabs/accordion control.
 
 ###The ``props`` object:
 
