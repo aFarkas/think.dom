@@ -39,13 +39,7 @@
             }
         };
     })();
-    var defSet = function(name, desc){
-        return function(value){
-            if(fireBefore(this, desc)){return;}
-            this.setAttribute(name, value);
-            updateAttr(this, desc);
-        };
-    };
+
     var queue = (function(){
         var fns = [];
         return {
@@ -60,191 +54,16 @@
             }
         }
     })();
+    var mapId = function(id){
+        return '#'+id;
+    };
     var reflectTypes = {
-        '': function (name, desc) {
 
-            return {
-                get: function(){
-                    return this.getAttribute(name) || desc['default'] || '';
-                },
-                set: defSet(name, desc)
-            };
-        },
-        'boolean': function (name, desc) {
-            return {
-                get: desc.isAria ?
-                    function(){
-                        return this.getAttribute(name) == 'true';
-                    } :
-                    function(){
-                        return this.getAttribute(name) != null;
-                    }
-                ,
-                set: desc.isAria ?
-                    function(value){
-                        if(fireBefore(this, desc)){return;}
-                        value = !!value+'';
-                        this.setAttribute(name, value);
-                        updateAttr(this, desc);
-                    } :
-                    function(value){
-                        if(fireBefore(this, desc)){return;}
-                        if(value){
-                            this.setAttribute(name, '');
-                        } else {
-                            this.removeAttribute(name);
-                        }
-                        updateAttr(this, desc);
-                    }
-                }
-            ;
-        },
-        enum: function (name, desc) {
-            return {
-                get: function(){
-                    var value = this.getAttribute(name);
-                    return desc.enums.indexOf(value) != -1 ? value : desc['default'] || '';
-                },
-                set: defSet(name, desc)
-            };
-        },
-        node: function (name, desc, widget) {
-            return {
-                get: function(){
-                    var useValue, parent, index;
-                    var value = this.getAttribute(name) || desc['default'];
-                    var elem = cache.g(this, name, value);
-                    if(elem){return elem;}
-                    if(value){
-                        elem = document.getElementById(value);
-                    }
-                    if(!elem && desc.childOf){
-                        useValue = typeof desc.childOf != STRING ? value : desc.childOf;
-                        elem = this.xclosest(useValue);
-                    }
-                    if(!elem && desc.parentOf){
-                        useValue = typeof desc.parentOf != STRING ? value : desc.parentOf;
-                        elem = this.querySelector(useValue);
-                    }
-                    if(!elem && desc.indexOf){
-                        useValue = typeof desc.indexOf != STRING ? value : desc.indexOf;
-                        parent = desc.indexParent ? this.xclosest(desc.indexParent) : this.xclosestContainer(useValue, this.parent);
-                        if(parent){
-                            index = slice.call(this.xquerySelectorAll((desc.indexSelf || '') + '.'+widget.name, parent)).indexOf(this);
-                            elem = this.xquerySelectorAll(useValue, parent)[index];
-                        }
-                    }
-
-                    return cache.a(this, name, value, elem || null, 1);
-                },
-                set: function(value){
-                    if(fireBefore(this, desc)){return;}
-                    if(value){
-                        if(typeof value != 'string'){
-                            value = value.id;
-                            if(!value){
-                                uuid++;
-                                value.id = 'id-'+uuid;
-                                value = value.id;
-                            }
-                        }
-                        this.setAttribute(name, value);
-                    } else {
-                        this.removeAttribute(name);
-                    }
-                    updateAttr(this, desc, widget);
-                }
-            };
-        },
-        nodes: function(name, desc, widget){
-            return {
-                get: function(){
-                    var useValue, id, elem, index, parent;
-                    var value = this.getAttribute(name) || desc['default'];
-                    var list = cache.g(this, name, value);
-                    var filter = 'filter' in desc ? desc.filter : desc.parentOf || desc.childOf || '.'+widget.name;
-                    if(list){
-                        return list;
-                    }
-                    list = [];
-
-                    if(desc.sameValue){
-                        merge(list, this.xquerySelectorAll('['+name+'="'+ value +'"]'+filter, docElem));
-                    }
-                    if(desc.parentOf){
-                        useValue = typeof desc.parentOf != STRING ? value : desc.parentOf;
-                        merge(list, this.querySelectorAll(useValue));
-                    }
-                    if(desc.childOf){
-                        useValue = typeof desc.childOf != STRING ? value : desc.childOf;
-                        if((elem = this.xclosest(useValue))){
-                            list.push(elem);
-                        }
-                    }
-                    if(desc.idAsValueOf && (id = this.id)){
-                        useValue = typeof desc.idAsValueOf != STRING ? value : desc.idAsValueOf;
-                        merge(list, this.xquerySelectorAll('[' +useValue+ '="'+ id +'"]'+filter, docElem))
-                    }
-
-                    if(desc.indexOf){
-                        useValue = typeof desc.indexOf != STRING ? value : desc.indexOf;
-                        parent = desc.indexParent ? this.xclosest(desc.indexParent) : this.xclosestContainer(useValue, this.parent);
-
-                        if(parent){
-                            index = slice.call(this.xquerySelectorAll((desc.indexSelf || '') + '.'+widget.name, parent)).indexOf(this);
-                            if((elem = this.xquerySelectorAll(useValue, parent)[index])){
-                                list.push(elem);
-                            }
-                        }
-
-                    }
-
-                    return cache.a(this, name, value, list, 1);
-                },
-                set: defSet(name, desc)
-            };
-        },
-        json: function (name, desc) {
-            return {
-                get: function(){
-                    var value = this.getAttribute(name);
-                    var json = cache.g(this, name, value);
-                    if(json){return json;}
-                    if(value){
-                        try {
-                            json = JSON.parse(this.getAttribute(name));
-                        } catch(e){}
-                    }
-
-                    return cache.a(this, name, value, json || desc['default'] || null);
-                },
-                set: function(value){
-                    if(fireBefore(this, desc)){return;}
-                    if(typeof value == 'object'){
-                        value = JSON.stringify(this.getAttribute(name));
-                    }
-                    this.setAttribute(name, value);
-                    updateAttr(this, desc);
-                }
-            };
-        },
-        selector: function (name, desc) {
-            return {
-                get: function(){
-                    var elems;
-                    var value = this.getAttribute(name) || desc['default'];
-                    if(value){
-                        elems = this.xquerySelectorAll(value, docElem);
-                    }
-                    return elems || [];
-                },
-                set: defSet(name, desc)
-            };
-        }
     };
     var regDash = /-(.)/g;
     var regAria = /^aria\-/;
     var baseWidget = {};
+
 
     [{name: 'xclosest', fn: 'matches'}, {name: 'xclosestContainer', fn: 'querySelector'}].forEach(function(desc){
         baseWidget[desc.name] = function(sel, elem, stop){
@@ -296,6 +115,180 @@
         elemProto.matches = elemProto.mozMatchesSelector || elemProto.webkitMatchesSelector || elemProto.msMatchesSelector;
     }
 
+    function defSet(name, value, options){
+        if(value == null){
+            this.removeAttribute(name);
+        } else {
+            this.setAttribute(name, value);
+        }
+    }
+
+    function defGet(name, value, options){
+        return value || ('default' in options ? options['default'] : '');
+    }
+
+    function addAttributeType(type, desc){
+        reflectTypes[type] = desc;
+        if(!desc.set){
+            desc.set = defSet;
+        }
+        if(!desc.get){
+            desc.get = defGet;
+        }
+    }
+
+    addAttributeType('', {});
+
+    addAttributeType('boolean', {
+        get: function(name, value, options){
+            return options.isAria ?
+                value == 'true' :
+                value != null
+            ;
+        },
+        set: function(name, value, options){
+            value = !!value;
+            if(options.isAria){
+                this.setAttribute(name, value);
+            } else {
+                this.removeAttribute(name);
+            }
+        }
+    });
+
+    addAttributeType('enum', {
+        get: function(name, value, options){
+            return options.enums.indexOf(value) != -1 ? value : options['default'] || '';
+        }
+    });
+
+    addAttributeType('node', {
+        get: function(name, value, options){
+            var useValue, parent, index;
+            var elem = cache.g(this, name, value);
+            if(elem){return elem;}
+            if(value){
+                elem = document.getElementById(value);
+            }
+
+            if(!elem && options.indexOf){
+                useValue = typeof options.indexOf != STRING ? value : options.indexOf;
+                parent = options.indexParent ? this.xclosest(options.indexParent) : this.xclosestContainer(useValue, this.parent);
+                if(parent){
+                    index = slice.call(this.xquerySelectorAll((options.indexSelf || '') + '.'+options.widgetName, parent)).indexOf(this);
+                    elem = this.xquerySelectorAll(useValue, parent)[index];
+                }
+            }
+            if(!elem && options.childOf){
+                useValue = typeof options.childOf != STRING ? value : options.childOf;
+                elem = this.xclosest(useValue);
+            }
+            if(!elem && options.parentOf){
+                useValue = typeof options.parentOf != STRING ? value : options.parentOf;
+                elem = this.querySelector(useValue);
+            }
+
+            return cache.a(this, name, value, elem || null, 1);
+        },
+        set: function(name, value, options){
+            if(value){
+                if(typeof value != 'string'){
+                    value = value.id;
+                    if(!value){
+                        uuid++;
+                        value.id = 'id-'+uuid;
+                        value = value.id;
+                    }
+                }
+                this.setAttribute(name, value);
+            } else {
+                this.removeAttribute(name);
+            }
+        }
+    });
+
+    addAttributeType('nodes', {
+        get: function(name, value, options){
+            var useValue, id, elem, index, parent, filter;
+            var list = cache.g(this, name, value);
+
+            if(list){
+                return list;
+            }
+
+            filter = 'filter' in options ? options.filter : options.parentOf || options.childOf || '';
+            list = [];
+
+            if(options.sameValue){
+                merge(list, this.xquerySelectorAll('['+name+'="'+ value +'"]'+(filter || '.'+options.widgetName), docElem));
+            } else if(value){
+                merge(list, this.xquerySelectorAll(value.split(' ').map(mapId).join(' '), docElem));
+            }
+
+            if(options.parentOf){
+                useValue = typeof options.parentOf != STRING ? value : options.parentOf;
+                useValue = this.xquerySelectorAll(useValue);
+
+                if(options.idAsValueOf){
+                    id = this.id;
+                    useValue = useValue.filter(function(elem){
+                        var ref = elem.getAttribute(options.idAsValueOf);
+                        return !ref || ref == id;
+                    });
+                }
+
+                merge(list, useValue);
+            }
+            if(options.childOf){
+                useValue = typeof options.childOf != STRING ? value : options.childOf;
+                if((elem = this.xclosest(useValue))){
+                    list.push(elem);
+                }
+            }
+            if(options.idAsValueOf && (id || (id = this.id))){
+                useValue = typeof options.idAsValueOf != STRING ? value : options.idAsValueOf;
+                merge(list, this.xquerySelectorAll('[' +useValue+ '="'+ id +'"]'+filter, docElem))
+            }
+
+            if(options.indexOf){
+                useValue = typeof options.indexOf != STRING ? value : options.indexOf;
+                parent = options.indexParent ? this.xclosest(options.indexParent) : this.xclosestContainer(useValue, this.parent);
+
+                if(parent){
+                    index = slice.call(this.xquerySelectorAll((options.indexSelf || '') + '.'+options.widgetName, parent)).indexOf(this);
+                    if((elem = this.xquerySelectorAll(useValue, parent)[index])){
+                        list.push(elem);
+                    }
+                }
+
+            }
+
+            return cache.a(this, name, value, list, 1);
+        }
+    });
+
+
+    addAttributeType('json', {
+        get: function(name, value, options){
+            var json = cache.g(this, name, value);
+            if(json){return json;}
+            if(value){
+                try {
+                    json = JSON.parse(this.getAttribute(name));
+                } catch(e){}
+            }
+
+            return cache.a(this, name, value, json || options['default'] || null);
+        },
+        set: function(name, value, options){
+            if(typeof value == 'object'){
+                value = JSON.stringify(this.getAttribute(name));
+            }
+            this.setAttribute(name, value);
+        }
+    });
+
+
     function camelCase(match, found) {
         return found.toUpperCase();
     }
@@ -319,10 +312,6 @@
             obj[key] = value;
         }
         return value;
-    }
-
-    function fireBefore(elem, desc){
-        return desc.cancelable && think.event.fire(elem, 'before'+desc.name+'change', {cancelable: true}).defaultPrevented;
     }
 
 
@@ -351,15 +340,6 @@
             if(!Array.isArray(obj[prop])){
                 obj[prop] = [obj[prop]];
             }
-        }
-    }
-
-    function updateAttr(dom, desc){
-        if(desc.onset){
-            baseWidget.xupdateattr.call(dom);
-        }
-        if(desc.fire){
-            think.event.fire(dom, desc.name+'change');
         }
     }
 
@@ -541,7 +521,7 @@
     }
 
     function createWidget(dom, widget){
-        var subtreeWidget, ext;
+        var ext;
         var widgets = elementData(dom)._.widgets;
 
         if(!widgets[widget.name]){
@@ -573,44 +553,63 @@
             });
         }
 
-        if(!widgets[widget.name] && widget.subtreeWidgets){
-            for(subtreeWidget in widget.subtreeWidgets){
-                addQuery('.'+subtreeWidget, widget.subtreeWidgets[subtreeWidget].think, dom);
-            }
-        }
         widgets[widget.name] = true;
     }
 
+    function getAttrAccessor(attrName, attrOptions){
+
+        return {
+            get: function(){
+                return reflectTypes[attrOptions.type].get.call(this, attrName, this.getAttribute(attrName), attrOptions);
+            },
+            set: function(value){
+                if(!attrOptions.cancelable || !think.event.fire(this, 'before'+attrOptions.name+'change', {cancelable: true}).defaultPrevented){
+
+                    reflectTypes[attrOptions.type].set.call(this, attrName, value, attrOptions);
+
+                    if(attrOptions.onset){
+                        baseWidget.xupdateattr.call(this);
+                    }
+                    if(attrOptions.fire){
+                        think.event.fire(this, attrOptions.name+'change');
+                    }
+                }
+
+            }
+        };
+    }
 
     function buildAttrs(widget){
-        var name, desc, attrName;
+        var name, attrOptions, attrName;
 
         if(widget.attrs){
             widget.xattrs = {};
             for(name in widget.attrs){
-                desc = widget.attrs[name];
+                attrOptions = widget.attrs[name];
+                attrOptions.widgetName = widget.name;
 
                 if(regAria.test(name)){
-                    desc.isAria = true;
+                    attrOptions.isAria = true;
                     attrName = name;
                 } else {
                     attrName = 'data-'+name;
                 }
-                if(desc.onset){
-                    widget.xattrs[attrName] = desc.onset;
+                if(attrOptions.onset){
+                    widget.xattrs[attrName] = attrOptions.onset;
                 }
-                desc.name = (desc.name || name.replace(/^aria\-/, '').replace(regDash, camelCase));
-                widget.props[desc.name] = (reflectTypes[desc.type] || reflectTypes[''])(attrName, desc, widget);
+                attrOptions.name = (attrOptions.name || name.replace(regAria, '').replace(regDash, camelCase));
+                if(!reflectTypes[attrOptions.type]){
+                    throw('no reflectType '+attrOptions.type);
+                }
+
+                widget.props[attrOptions.name] = getAttrAccessor(attrName, attrOptions);
+
             }
         }
     }
 
-    function prepareWidget(name, widget, isChildOfName, isChildOf){
-        var child, siblingWidgets;
+    function prepareWidget(name, widget){
 
-        if(isChildOfName){
-            isChildOfName = isChildOfName.replace(regDash, camelCase);
-        }
 
 
         widget.name = name;
@@ -642,30 +641,6 @@
 
         buildAttrs(widget);
 
-        if(widget.subtreeWidgets){
-            siblingWidgets = {};
-            for(child in widget.subtreeWidgets){
-                (function(child, subtreeWidget){
-                    widget.props[((subtreeWidget.childName || child+'s').replace(regDash, camelCase))] = {
-                        get: function(){
-                            return this.xquerySelectorAll('.'+child);
-                        }
-                    };
-                    subtreeWidget.siblingWidgets = siblingWidgets;
-                    prepareWidget(child, subtreeWidget, widget.parentName || name, name);
-                })(child, widget.subtreeWidgets[child]);
-
-
-            }
-        }
-
-        if(isChildOf){
-            widget.props[isChildOfName] = {
-                get: function(){
-                    return this.xclosest('.'+isChildOf);
-                }
-            };
-        }
 
         if(widget.props){
             for(name in widget.props){
@@ -757,10 +732,33 @@
 
     })();
 
+    function extend(base){
+        slice.call(arguments, 1).forEach(function(source){
+            for(var prop in source){
+                if( !base[prop] || typeof base[prop] != 'object' ){
+                    base[prop] = source[prop] && typeof source[prop] == 'object' ? extend({}, source[prop]) : source[prop];
+                } else if(Array.isArray(base[prop]) && 'length' in source[prop]){
+                    merge(base[prop], source[prop]);
+                } else {
+                    extend(base[prop], source[prop]);
+                }
+            }
+        });
+        return base;
+    }
+
+    think.extend = extend;
+
     think.baseWidget = baseWidget;
 
+    think.mixin = mixin;
 
-    think.reflectTypes = reflectTypes;
+    think.getTypes = function(){
+        return Object.keys(reflectTypes);
+    };
+
+    think.addAttributeType = addAttributeType;
+
     think.addAttrObserver = addAttrObserver;
     think.addTreeObserver = addSubtreeObserver;
 

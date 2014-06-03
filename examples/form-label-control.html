@@ -3,7 +3,8 @@
 <head>
     <title>label control</title>
     <style>
-        .checkbox {
+        .checkbox,
+        .radio {
             display: inline-block;
             width: 1em;
             height: 1em;
@@ -12,7 +13,12 @@
             vertical-align: middle;
         }
 
-        .checkbox[aria-checked="true"]:before {
+        .radio {
+            border-radius: 50%;
+        }
+
+        .checkbox[aria-checked="true"]:before,
+        .radio[aria-checked="true"]:before {
             content: "x";
             vertical-align: middle;
         }
@@ -45,16 +51,12 @@
     <script src="../dist/think.js"></script>
 
     <script>
-        think.dom('checkbox', {
-            life: {
-                created: function(){
-                    this.setAttribute('role', 'checkbox');
-                    this.tabIndex = 0;
-                }
-            },
+        //prototype for .radio and .checkbox
+        var inputProto = {
             attrs: {
                 'aria-checked': {
-                    type: 'boolean'
+                    type: 'boolean',
+                    fire: true
                 },
                 labels: {
                     type: 'nodes',
@@ -65,12 +67,6 @@
                 form: {
                     type: 'node',
                     childOf: '.form'
-                }
-            },
-            on: {
-                click: function(){
-                    this.xchecked = !this.xchecked;
-                    think.event.fire(this, 'change');
                 }
             },
             props: {
@@ -87,13 +83,57 @@
                     enumerable: false
                 }
             }
-        });
+        };
+
+
+        think.dom('checkbox', think.extend({}, inputProto, {
+            life: {
+                created: function(){
+                    this.setAttribute('role', 'checkbox');
+                    this.tabIndex = 0;
+                }
+            },
+            on: {
+                click: function(){
+                    this.xchecked = !this.xchecked;
+                }
+            }
+        }));
+
+        think.dom('radio', think.extend({}, inputProto, {
+            life: {
+                created: function(){
+                    this.setAttribute('role', 'radio');
+                    this.tabIndex = 0;
+                }
+            },
+            attrs: {
+                //data-name
+                'name': {
+                    type: 'nodes',
+                    name: 'group',
+                    sameValue: true
+                }
+            },
+            on: {
+                click: function(){
+                    if(!this.xchecked){
+                        this.xgroup.forEach(function(control){
+                           if(control.xchecked){
+                               control.xchecked = false;
+                           }
+                        });
+                        this.xchecked = true;
+                    }
+                }
+            }
+        }));
 
         think.dom('label', {
             attrs: {
                 'aria-controls': {
                     type: 'node',
-                    parentOf: '.checkbox',
+                    parentOf: '.checkbox, .radio',
                     name: 'control'
                 }
             },
@@ -110,13 +150,8 @@
             attrs: {
                 'elements': {
                     type: 'nodes',
-                    parentOf: '.checkbox',
+                    parentOf: '.checkbox, .radio',
                     idAsValueOf: 'data-form'
-                }
-            },
-            on: {
-                submit: function(e){
-                    this.xoutputData();
                 }
             },
             proto: {
@@ -151,11 +186,11 @@
         demo out put for console
          */
 
-        think.event.on(document.documentElement, 'change', function(e, checkbox){
+        think.event.on(document.documentElement, 'checkedchange', function(e, control){
             if(window.console){
-                console.log(checkbox.xtext);
+                console.log(control.xtext);
             }
-        }, '.checkbox');
+        }, '.checkbox, .radio');
     </script>
 </head>
 <body>
@@ -175,6 +210,25 @@
         </span>
     </div>
 
+    <div>
+        <span class="label">
+            <span class="radio" data-name="1"></span>
+            group 1 option 1
+        </span>
+    </div>
+    <div>
+        <span class="label">
+            <span class="radio" data-name="1"></span>
+            group 1 option 2
+        </span>
+    </div>
+    <div>
+        <span class="label">
+            <span class="radio" data-name="1"></span>
+            group 1 option 3
+        </span>
+    </div>
+
     <span class="submit">submit</span>
 </div>
 <hr />
@@ -185,7 +239,20 @@
     </span>
 </div>
 <div>
+        <span class="label">
+            <span class="radio" data-name="2" aria-checked="true" data-form="myform"></span>
+            group 2 option 1
+        </span>
+</div>
+<div>
+        <span class="label">
+            <span class="radio" data-name="2" data-form="myform"></span>
+            group 2 option 2
+        </span>
+</div>
+<div>
     <span class="label" aria-controls="check-id">explicit label for 2</span>
 </div>
+
 </body>
 </html>
