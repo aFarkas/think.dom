@@ -1,170 +1,191 @@
-#think.js documentation
+#think.js - The "Think DOM library"
 
-* ``think.dom`` the component factory - the heart of think
-* ``think.event`` event uitils object to add/remove/fire events
-* ``think.update`` takes the currently running ``MutationRecords`` and updates/creates all widgets
-* ``think.reflectTypes`` extendable object of reflecting attribute types
-* ``think.baseWidget`` extendable object, which is mixed into all created widgets
 
-##think.dom(className="", widgetDescription={})
+think.js is an extreme lightweight widget factory, which helps you to create smart, self-contained, self-initializing, reusable, descriptive UI widgets / components, without forcing you to use a bunch of polyfills or a specific DOM library.
 
-The ``think.dom`` takes two arguments first the class name of your UI widgets and second the widgetDescription, which consists of the following optional sub objects:
+think.js takes only a few but very exciting and more stable features and ideas of the web components world and turns them into a lightweight, fast, robust/stable micro library. To make it usable today (tested Browser Support: IE9+, Safari 5.1+, Firefox14+, Chrome 18+).
 
-* ``live`` (declares the lifecycle object)
-* ``on`` (declares the event to bind to the widget element)
-* ``attrs`` (declares reflecting attributes for the widget)
-* ``proto`` (declares methods and properties for the widget)
-* ``props`` (declares setters/getters and values for the widget)
-* ``subtreeWidgets`` (declares widgets, which live only inside this parent widget and are bi-directional associated)
+##Install
 
-###The ``live`` object:
+```html
+<script>
+// for IE10-, Safari 6.0-
+if(!window.MutationObserver){
+	document.write('<script src="js/think-polyfills.min.js"><\/script>');
+}
+</script>
+<script src="js/think.min.js"></script>
+
+<script>
+think.dom('my-component', {
+	/* component definition */
+});
+</script>
+```
+
+The [full documentation for the think API](docs/readme.md).
+
+##How think makes your development easier
+
+###The DOM is alive
+CSS and the current way of JavaScript development do not work well together. While a CSS selector applys to any current and future element...
+
+```css
+.ui-datepicker {
+	/* every element with the class "ui-datepicker"
+	looks like a datepicker */
+}
+```
+
+... a normal DOM query in JS only applys to a specific moment.
 
 ```js
-think.dom('my-widget', {
-	life: function(){
-		created: function(widgetDefinition){
-			//this widget was just inserted into the document
-		},
-		moved: function(){
-			//this widget was moved/manipulated in the document
-		},
-		destroyed: function(widgetDefinition){
-			//this widget was removed form the document
-		},
-		attr: {
-			'data-fantastic': function(){
-				//this.getAttribute('data-fantastic') was just changed
-			}
-		},
-		subtree: {
-			'.my-subwidget-a, .my-subwidget-b': function(changeObj){
-				//.my-subwidget-a / .my-subwidget-b was added/removed
-				//changeObj.added.length
-				//changeObj.removed.length
-			}
+/*
+every element with the class "ui-datepicker" found at document ready behaves like a datepicker,
+BUT every new datepicker element in the document has to be initialized again and again and again....
+*/
+$(document).ready(function(){
+	$('.ui-datepicker').datepicker();
+});
+```
+
+``think`` on the other hand **works on the living document** and helps writing self-initializing UI objects based on their class name and even helps to turn old-fashioned written JS widgets into live objects:
+
+```js
+/* every current and future element with class "ui-datepicker" behaves like a datepicker */
+think.dom('ui-datepicker', {
+	life: {
+		created: function(){
+			$(this).datepicker();
 		}
 	}
 });
 ```
 
-###The ``on`` object
+###It's about the DOM element
+``think`` doesn't force you to switch your ``this`` context between an element and an abstract widget object. ``think`` puts the DOM element right there, where it belongs and extends the DOM in a save and future proof way **without polluting ``Element.prototype``**.
+
+###HTML configures the behavior
+Native elements have the concept of reflecting attributes (HTML attributes vs DOM properties or content attributes vs. IDL attributes) to configure the initial state with a declarative and descriptive API, while this verbose API is seamlessly integrated into the DOM scripting world. ``think`` makes it easy to declare several reflecting attribute types, by automatically generating ES5 ``accessors`` and HTML5 DOM attribute ``MutationObserver``s. Every property is automatically camel-cased and gets a ``x`` prefix and every content attribute a ``data-`` prefix:
+
+```html
+<input class="ui-datepicker" data-show-week="" />
+```
 
 ```js
-think.dom('my-widget', {
-	on: {
-		click: function(e){
-			//my-widget was just clicked
-		},
-		'mousedown touchstart': function(e){
-			//there was a mousedown/touchstart on my widget
-		},
-		'click:delegate(.option)': function(e, option){
-			//an .option element inside my widget (this, e.currentTarget) was just clicked
+think.dom('ui-datepicker', {
+	life: {
+		created: function(){
+			$(this).datepicker({
+				showWeek: this.xshowWeek
+			});
+		}
+	},
+	attrs: {
+		'show-week': {
+			type: 'boolean'
 		}
 	}
 });
 ```
 
-###The ``attrs`` object
-
-The ``attrs`` object declares reflecting attributes. The generated ``data-`` attributes can be used to make your widget configurable or as styling hooks for your CSS, while the reflecting ``x`` property does its magic in your JavaScript code. In case the attribute has an ``aria-`` prefix, ``think`` won't generate a ``data-``prefix for it.
-
-####Common attribute definitions
-
-The following code generates reflecting attributes with the property name ``xsource`` and the content attribute name ``data-source`` for the widget.
-
-
+Re-act on DOM change:
 
 ```js
-think.dom('my-widget', {
+think.dom('ui-datepicker', {
+	life: {
+		created: function(){
+			$(this).datepicker({
+				showWeek: this.xshowWeek
+			});
+		}
+	},
 	attrs: {
-		source: {}
-	}
-});
-```
-
-The ``name`` property controls the name of the generated accessors.
-
-```js
-think.dom('my-widget', {
-	//"xpropSource" reflects "data-source".
-	attrs: {
-		source: {name: 'propSource'}
-	}
-});
-```
-
-With the ``onset`` callback you can listen to any attribute/property change:
-
-```js
-think.dom('my-widget', {
-	attrs: {
-		source: {
+		'show-week': {
+			type: 'boolean',
 			onset: function(){
-				//The "xsource" property / the "data-source" attribute was changed.
-				console.log(this.xsource)
+				$(this).datepicker('option', 'showWeek', this.xshowWeek);
 			}
 		}
 	}
 });
 ```
 
-With the ``canceable`` property the developer can mark an attribute change as canceable. In this case a canceable and bubbling event is fired with the name ``beforeyourpropertynamechange``.
+###Re-usable UI components
+**Self-contained widgets** are the key to create re-usable and multiple widgets for a website or webapp. ``think`` gives you many tools to stay in the context of the main UI element, while associating different elements in a document with each other.
+
+The following JS:
 
 ```js
+//create a panel with an open attribute
 think.dom('panel', {
 	attrs: {
-		'aria-selected': {
-			type: 'boolean',
-            canceable: true
-		}
+		open: {type: 'boolean'}
 	}
 });
 
-think.dom('panel-wrapper', {
+//create a panel-toggle which is automatically associated to a panel
+think.dom('panel-toggle', {
+	attrs: {
+		target: {
+			type: 'node', 
+			childOf: '.panel'
+	   }
+	},
 	on: {
-    	'beforeselectedchange': function(e){
-        	if(e.target.matches('.panel) && **someCondition**){
-            	e.preventDefault();
-            }
-        }
-    }
-});
-```
-
-Due to the fact, that this event is bubbling and you might use multiple differnt widgets with the same property name, you should check, wether the event target matches your widget className.
-
-All reflecting types, but the ``boolean``-type, do support a default value called ``default`` in case the current value is fals-y, this value is returned. How this default value is processed depends on the type of the attribute.
-
-```js
-//if the attribute data-foo is not set, it will return "bar"
-think.dom('my-widget', {
-	attrs: {
-    	'foo': {'default': 'bar'}
-    }
-});
-```
-
-
-####The default attr type
-
-
-####The nodes attr type
-
-```js
-think.dom('my-accordion', {
-	attrs: {
-		items: {
-			type: 'nodes',
-            parentOf: '.accordion-items'
+		click: function(){
+			this.xtarget.xopen = !this.xtarget.xopen;
 		}
 	}
 });
+
 ```
 
+Let's you use the following HTML.
 
+```html
+<style>
+.panel > .panel-box {
+	display: none;
+}
+.panel[data-open] > .panel-box {
+	display: block;
+}
+</style>
 
+<button type="button" class="panel-toggle" data-target="panel-id">
+	toggles panel
+</button>
 
+<div class="panel" data-open>
+	<button type="button" class="panel-toggle">
+		Toggle
+	</button>
+	<div class="panel-box">
+		Some content for first panel (initially open)
+	</div>
+</div>
 
+<div class="panel" id="panel-id">
+	<button type="button" class="panel-toggle">
+		Toggle
+	</button>
+	<div class="panel-box">
+		Some content for 2 with #id
+	</div>
+</div>
+```
 
+##Similiar Projects/Ideas
 
+* [x-tags](http://x-tags.org/)
+* [better-dom](http://chemerisuk.github.io/better-dom/)
+* [jquery ui widget factory](http://api.jqueryui.com/jQuery.widget/)
+* [Polymer](https://github.com/Polymer/polymer)
+
+##Used third party scripts
+All code of the think-polyfills.js is third party code:
+
+* [MutationObservers polyfill](https://github.com/Polymer/MutationObservers/blob/master/LICENSE)
+* [weekmap polyfill](https://github.com/Polymer/WeakMap/blob/master/LICENSE)
+* [DOM4 polyfill](https://github.com/WebReflection/dom4/blob/master/LICENSE.txt)
