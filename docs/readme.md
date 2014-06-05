@@ -440,6 +440,28 @@ think.addAttributeType('date', {
 });
 ```
 
+With the extension above the new attribute type ``date`` can be used like any other pre-built attribute type:
+
+
+```
+think.dom('my-widget', {
+	attrs: {
+    	date: {
+        	type: 'date', 
+            'default': new Date().toJSON()
+       }
+    }
+});
+
+<!--
+use as markup:
+-->
+<div class="my-widget" data-date="2012-10-10"></div>
+
+//use in JS code:
+var date = document.querySelector('.my-widget').xdate; //returns a Date object
+```
+
 
 
 
